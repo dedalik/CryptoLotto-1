@@ -16,8 +16,7 @@ class AddressesInLottoContainer extends PureComponent {
 
 	getAddressesInLotto = async () => {
 		const { CryptoLotto } = this.props.drizzle.contracts
-		console.log(CryptoLotto)
-		const addressesInLottoLength = await CryptoLotto.methods.getLotteryContestantsLength().call()
+		const addressesInLottoLength = await CryptoLotto.methods.getLotteryContestantsAddressesLength().call()
 
 		const addressesInLotto = []
 
@@ -38,28 +37,17 @@ class AddressesInLottoContainer extends PureComponent {
 
 
 	handleClick = () => {
-		const {
-			selectedAccount,
-			addressesInLotto
-		} = this.state
-
-		// if (addressesInLotto.includes(selectedAccount)) {
-		// 	return alert(`This address is already included in the lotto. Please select another address`)
-		// }
-
 		const { CryptoLotto } = this.props.drizzle.contracts
-		console.log(CryptoLotto.methods)
-		console.log(CryptoLotto.methods.addLotteryContestant)
 
-		const latestTransactionHash = CryptoLotto.methods.addLotteryContestant.cacheSend({
-			from: selectedAccount
+		const latestTransactionHash = CryptoLotto.methods.createLotteryContestant.cacheSend({
+			from: this.state.selectedAccount
 		})
 
 		this.setState({
 			latestTransactionHash,
 			addressesInLotto: [
 				...this.state.addressesInLotto,
-				selectedAccount
+				this.state.selectedAccount
 			]
 		})
 	}
@@ -67,7 +55,6 @@ class AddressesInLottoContainer extends PureComponent {
 	getTransactionStatus = () => {
 		const { transactions, transactionStack } = this.props.drizzleState
 		const transactionHash = transactionStack[this.state.latestTransactionHash]
-		console.log(transactions[transactionHash])
 		return !transactionHash ? null : `Transaction status: ${transactions[transactionHash].status}`
 	}
 

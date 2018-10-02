@@ -1,10 +1,11 @@
-import React, { Component } from 'react'
+import React, { Component, Fragment } from 'react'
 
 class App extends Component {
   state = {
     accounts: [],
     drizzleState: null,
-    PresenationComponet: null
+    TicTakToPresentation: null,
+    CryptoLottoPresentation: null
   }
 
   componentDidMount() {
@@ -48,28 +49,49 @@ class App extends Component {
   }
 
   importAndMountComponents = () => {
-    import(`./Components/AddressesInLotto/Container`)
-      .then(res => this.setState({ PresenationComponet: res.default }))
+    Promise.all([
+      import(`./Components/TicTakTo/Container/`),
+      import(`./Components/AddressesInLotto/Container/`)
+    ])
+      .then(res =>
+        this.setState({
+          TicTakToPresentation: res[0].default,
+          CryptoLottoPresentation: res[1].default
+        })
+      )
   }
 
   render() {
     const {
       accounts,
       drizzleState,
-      PresenationComponet
+      TicTakToPresentation,
+      CryptoLottoPresentation
     } = this.state
 
-    if (!PresenationComponet || !drizzleState || !accounts.length) return "Loading..."
+    if (!CryptoLottoPresentation || !drizzleState || !accounts.length || !TicTakToPresentation) return "Loading..."
     const { drizzle } = this.props
 
     return (
-      <PresenationComponet
-        {...{
-          drizzle,
-          accounts,
-          drizzleState
-        }}
-      />
+      <Fragment>
+        <CryptoLottoPresentation
+          {...{
+            drizzle,
+            accounts,
+            drizzleState
+          }}
+        />
+
+        <br /> <br />
+
+        <TicTakToPresentation
+          {...{
+            drizzle,
+            accounts,
+            drizzleState
+          }}
+        />
+      </Fragment>
     )
   }
 }
