@@ -74,15 +74,15 @@ class App extends Component {
 
     return (
       <Fragment>
-        <CryptoLottoPresentation
+        {/* <CryptoLottoPresentation
           {...{
             drizzle,
             accounts,
             drizzleState
           }}
-        />
+        /> 
 
-        <br /> <br />
+        <br /> <br /> */}
 
         <TicTakToPresentation
           {...{

@@ -1,26 +1,69 @@
-import React, { Component } from 'react'
+import React, { PureComponent } from 'react'
 
-class TikTakToContainer extends Component {
+class TikTakToContainer extends PureComponent {
 	state = {
-		getPlayerMoveDataKey: null,
-		getPlayerMovesLengthDataKey: null,
+		player1Moves: {},
+		player2Moves: {},
+		winningPlayer: null,
 		/* Component */
-		PresentationComponent: null
+		PresentationComponent: null,
+		/* Data keys */
+		getMovesDataKeys: {},
+		isPlayerOneTurnsDataKey: null,
+		getGameInProgressDataKey: null,
 	}
 
 	componentDidMount() {
 		Promise.all([
-			this.cacheDataKeys()
+			this.cacheDataKeys(),
+			this.listenToWinnerEvent(),
+			this.listenToNewMoveEvent()
 		]).then(this.importAndMountComponents())
 	}
 
 	cacheDataKeys() {
 		const { TicTakTo } = this.props.drizzle.contracts
-		const getPlayerMovesLengthDataKey = TicTakTo.methods.getPlayersMoveLength.cacheCall()
+
+		const getGameInProgressDataKey = TicTakTo.methods.gameInProgress.cacheCall()
+		const isPlayerOneTurnsDataKey = TicTakTo.methods.isPlayerOnesTurn.cacheCall()
+		const getMovesDataKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+			.reduce((obj, cur) => {
+				obj[cur] = TicTakTo.methods.getMove.cacheCall(cur)
+				return obj
+			}, {})
 
 		this.setState({
-			getPlayerMovesLengthDataKey
+			getMovesDataKeys,
+			isPlayerOneTurnsDataKey,
+			getGameInProgressDataKey
 		})
+	}
+
+	listenToNewMoveEvent = () => {
+		const { TicTakTo } = this.props.drizzle.contracts
+		TicTakTo.events.NewMove(
+			(res, { returnValues }) => {
+				const move = +returnValues.move
+				const playerNum = returnValues.player
+
+				this.setState({
+					[`player${playerNum}Moves`]: {
+						...this.state[`player${playerNum}Moves`],
+						[move]: true
+					}
+				})
+			}
+		)
+	}
+
+	listenToWinnerEvent = () => {
+		const { TicTakTo } = this.props.drizzle.contracts
+		TicTakTo.events.Winner(
+			(res, { returnValues }) => {
+				const winningPlayer = +returnValues.player
+				this.setState({ winningPlayer })
+			}
+		)
 	}
 
 	importAndMountComponents = () => {
@@ -28,31 +71,50 @@ class TikTakToContainer extends Component {
 			.then(res => this.setState({ PresentationComponent: res.default }))
 	}
 
-	getPlayerMoves = lengthOfPlayersMaps => {
-		if (
-			!lengthOfPlayersMaps ||
-			(!+lengthOfPlayersMaps.value[0] && !+lengthOfPlayersMaps.value[1])
-		) {
-			return {
-				player1Moves: [],
-				player2Moves: []
+	getPlayerMoves = async () => {
+		const { getMovesDataKeys } = this.state
+		const { TicTakTo } = this.props.drizzleState.contracts
+
+		const player1Moves = {}
+		const player2Moves = {}
+
+		for (const place in getMovesDataKeys) {
+			const playerOccupyingSquare = +TicTakTo.getMove[getMovesDataKeys[place]].value
+
+			if (playerOccupyingSquare === 1) {
+				player1Moves[place] = true
+			} else if (playerOccupyingSquare === 2) {
+				player2Moves[place] = true
 			}
 		}
 
-		const { TicTakTo } = this.props.drizzle.contracts
-		const player1MovesLen = +lengthOfPlayersMaps.value[0]
-		const player2MovesLen = +lengthOfPlayersMaps.value[1]
+		this.setState({
+			player1Moves,
+			player2Moves
+		})
+	}
 
-		return {
-			player1Moves: lengthOfPlayersMaps.value[0],
-			player2Moves: lengthOfPlayersMaps.value[1]
-		}
+	startGame = () => {
+		const { TicTakTo } = this.props.drizzle.contracts
+		TicTakTo.methods.startGame.cacheSend()
+
+		this.setState({
+			player1Moves: {},
+			player2Moves: {},
+			winningPlayer: null
+		})
 	}
 
 	render() {
 		const {
+			player1Moves,
+			player2Moves,
+			winningPlayer,
+			/* Component */
 			PresentationComponent,
-			getPlayerMovesLengthDataKey
+			/* Data Keys */
+			isPlayerOneTurnsDataKey,
+			getGameInProgressDataKey,
 		} = this.state
 
 		if (!PresentationComponent) {
@@ -60,23 +122,27 @@ class TikTakToContainer extends Component {
 		}
 
 		const { TicTakTo } = this.props.drizzleState.contracts
-		const lengthOfPlayersMaps = TicTakTo.getPlayersMoveLength[getPlayerMovesLengthDataKey]
+		const gameInProgress = TicTakTo.gameInProgress[getGameInProgressDataKey]
+		const isPlayerOnesTurn = TicTakTo.isPlayerOnesTurn[isPlayerOneTurnsDataKey]
+
+		/* Takes a moment for isPlayerOnesTurn and gameInProgress to be accessed sometimes */
+		if (!isPlayerOnesTurn || !gameInProgress) return null
 
 		const {
-			player1Moves,
-			player2Moves
-		} = this.getPlayerMoves(lengthOfPlayersMaps)
-
-		console.log({
-			player1Moves,
-			player2Moves
-		})
+			startGame,
+			getPlayerMoves
+		} = this
 
 		return (
 			<PresentationComponent
 				{...{
+					startGame,
 					player1Moves,
 					player2Moves,
+					winningPlayer,
+					getPlayerMoves,
+					gameInProgress,
+					isPlayerOnesTurn,
 					TicTakTo: this.props.drizzle.contracts.TicTakTo,
 				}}
 			/>

@@ -6,5 +6,11 @@ export default {
 	contracts: [
 		TikTakTo,
 		CryptoLotto
-	]
+	],
+	events: {
+		TikTakTo: [
+			`Winner`,
+			`NewMove`
+		]
+	}
 }
